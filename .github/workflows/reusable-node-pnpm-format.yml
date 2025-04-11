@@ -1,0 +1,164 @@
+name: pnpm format
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+        description: "Run pnpm format"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    env:
+      PREVIEW_LINES: 30 # PRコメントに表示する行数のパラメータ
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          working-directory: ${{ inputs.working_directory }}
+          install: true
+          cache: true
+          log_level: debug
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            ${{ inputs.working_directory }}/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.working_directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working_directory }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm format
+        id: format
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          # 先にエラーハンドリングを設定
+          set +e  # コマンドが失敗してもスクリプトを継続
+
+          # pnpm format の実行
+          echo "pnpm format を実行します..."
+          output=$(pnpm format --colors=force 2>&1)
+          format_exit_code=$?
+
+          # 出力を確実に表示
+          echo "=================== pnpm format 実行結果 ==================="
+          echo -e "$output"
+          echo "=================== 終了コード: $format_exit_code ==================="
+
+          # ステップの出力として保存
+          if [ $format_exit_code -ne 0 ]; then
+            echo "format_success=false" >> $GITHUB_OUTPUT
+            # 複数行の出力を設定する特殊な構文
+            echo "format_output<<EOF" >> $GITHUB_OUTPUT
+            echo "$output" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "format_success=true" >> $GITHUB_OUTPUT
+          fi
+
+      # フォーマットエラー時のコメント
+      - name: Comment on PR for format error
+        if: steps.format.outputs.format_success == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # ANSIエスケープシーケンスを除去
+          clean_output=$(echo "${{ steps.format.outputs.format_output }}" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
+
+          # 最初のn行を取得
+          echo "$clean_output" | head -n $PREVIEW_LINES > error_summary.txt
+
+          echo "### [${{ inputs.working_directory }}] pnpm format エラーが発生しました" > format_error.txt
+          echo "\`\`\`" >> format_error.txt
+          cat error_summary.txt >> format_error.txt
+          echo "\`\`\`" >> format_error.txt
+          echo "" >> format_error.txt
+
+          # 全体の行数をカウント
+          total_lines=$(echo "$clean_output" | wc -l)
+
+          # 設定行数以上あれば折りたたみセクションを追加
+          if [ $total_lines -gt $PREVIEW_LINES ]; then
+            echo "<details><summary>全エラー内容を表示 (残り $(($total_lines - $PREVIEW_LINES)) 行)</summary>" >> format_error.txt
+            echo "" >> format_error.txt
+            echo "\`\`\`" >> format_error.txt
+            echo "$clean_output" | tail -n +$(($PREVIEW_LINES + 1)) >> format_error.txt
+            echo "\`\`\`" >> format_error.txt
+            echo "</details>" >> format_error.txt
+          fi
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat format_error.txt)"
+
+      # 差分を確認
+      - name: Check for changes
+        id: check_diff
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          if [[ $(git status --porcelain) ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 差分があればPRにコメント
+      - name: Comment on PR
+        if: steps.check_diff.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 差分の最初のn行を取得
+          cd ${{ inputs.working_directory }}
+          git diff | head -n $PREVIEW_LINES > diff.txt
+
+          # 全体の行数をカウント
+          total_lines=$(git diff | wc -l)
+
+          echo "### [${{ inputs.working_directory }}] フォーマット差分が検出されました" > comment.txt
+          echo "\`\`\`diff" >> comment.txt
+          cat diff.txt >> comment.txt
+          echo "\`\`\`" >> comment.txt
+
+          # 設定行数以上あれば折りたたみセクションを追加
+          if [ $total_lines -gt $PREVIEW_LINES ]; then
+            echo "" >> comment.txt
+            echo "<details><summary>全差分を表示 (残り $(($total_lines - $PREVIEW_LINES)) 行)</summary>" >> comment.txt
+            echo "" >> comment.txt
+            echo "\`\`\`diff" >> comment.txt
+            git diff | tail -n +$(($PREVIEW_LINES + 1)) >> comment.txt
+            echo "\`\`\`" >> comment.txt
+            echo "</details>" >> comment.txt
+          fi
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat comment.txt)"
+
+      # 最後にチェックして失敗ステータスを設定するステップを追加
+      - name: Set workflow status
+        id: set_status
+        run: |
+          if [[ "${{ steps.format.outputs.format_success }}" == "false" ]]; then
+            echo "[${{ inputs.working_directory }}] pnpm format コマンドでエラーが発生しました。"
+            exit 1
+          fi
+
+          if [[ "${{ steps.check_diff.outputs.has_changes }}" == "true" ]]; then
+            echo "[${{ inputs.working_directory }}] フォーマット差分が検出されました。"
+            exit 1
+          fi
+
+          echo "[${{ inputs.working_directory }}] フォーマットチェックに成功しました。"

@@ -1,0 +1,7 @@
+[tools]
+
+node = "20"
+pnpm = "10.6.4"
+
+#corepack = "latest"
+
