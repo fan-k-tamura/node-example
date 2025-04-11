@@ -25,7 +25,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
-          working-directory: ${{ inputs.working_directory }}
+          working_directory: ${{ inputs.working_directory }}
           install: true
           cache: true
           log_level: debug
@@ -84,7 +84,7 @@ jobs:
           # 最初のn行を取得
           echo "$clean_output" | head -n $PREVIEW_LINES > error_summary.txt
 
-          echo "### [${{ inputs.working_directory }}] pnpm format エラーが発生しました" > format_error.txt
+          echo "### pnpm format エラーが発生しました" > format_error.txt
           echo "\`\`\`" >> format_error.txt
           cat error_summary.txt >> format_error.txt
           echo "\`\`\`" >> format_error.txt
@@ -129,7 +129,7 @@ jobs:
           # 全体の行数をカウント
           total_lines=$(git diff | wc -l)
 
-          echo "### [${{ inputs.working_directory }}] フォーマット差分が検出されました" > comment.txt
+          echo "### フォーマット差分が検出されました" > comment.txt
           echo "\`\`\`diff" >> comment.txt
           cat diff.txt >> comment.txt
           echo "\`\`\`" >> comment.txt
@@ -161,4 +161,4 @@ jobs:
             exit 1
           fi
 
-          echo "[${{ inputs.working_directory }}] フォーマットチェックに成功しました。"
+          echo "フォーマットチェックに成功しました。"

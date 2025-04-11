@@ -1,0 +1,36 @@
+name: Sync GitHub Release to Notion
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sync_to_notion:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ".github/workflows/scripts/release-notion-sync-release-note/package-lock.json"
+
+      - name: Install dependencies
+        run: cd .github/workflows/scripts/release-notion-sync-release-note && npm install
+
+      - name: Sync release to Notion
+        run: node .github/workflows/scripts/release-notion-sync-release-note/index.js
+        env:
+          NOTION_INTEGRATION_TOKEN: ${{ secrets.NOTION_INTEGRATION_TOKEN }}
+          NOTION_RELEASE_NOTE_DATABASE_ID: ${{ secrets.NOTION_RELEASE_NOTE_DATABASE_ID }}
+          GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GITHUB_RELEASE_NAME: ${{ github.event.release.name }}
+          GITHUB_RELEASE_URL: ${{ github.event.release.html_url }}
+          GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TZ: Asia/Tokyo

@@ -9,6 +9,6 @@ permissions:
 
 jobs:
   format-app:
-    uses: ./.github/workflows/reusable-node-pnpm-format.yml
+    uses: ./.github/workflows/_reusable-node-pnpm-format.yml
     with:
       working_directory: ./app
