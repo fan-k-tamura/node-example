@@ -1,12 +1,13 @@
-name: Sync GitHub Release to Notion
+name: Sync Release to Notion
 
 on:
   release:
     types: [published]
 
 jobs:
-  add-to-notion:
+  sync_to_notion:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -14,12 +15,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: ".github/workflows/scripts/package-lock.json"
 
-      - name: Install Dependencies
-        run: npm install @notionhq/client
+      - name: Install dependencies
+        run: cd .github/workflows/scripts && npm install
 
-      - name: Add Release to Notion Database
+      - name: Sync release to Notion
+        run: node .github/workflows/scripts/add-to-notion.js
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
@@ -28,5 +32,4 @@ jobs:
           GITHUB_RELEASE_URL: ${{ github.event.release.html_url }}
           GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
           GITHUB_REPO: ${{ github.repository }}
-        run: |
-          node .github/scripts/add-to-notion.js
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
