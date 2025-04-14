@@ -142,36 +142,39 @@ async function addReleaseToNotion() {
     // リリースノートをMarkdownブロックに変換
     const contentBlocks = [];
 
-    if (releaseBody) {
-      // リリースノートを複数の段落に分割
-      const paragraphs = releaseBody.split('\n\n');
+    // リリースノートを複数の段落に分割
+    const paragraphs = releaseBody.split('\n\n');
 
-      for (const paragraph of paragraphs) {
-        if (paragraph.trim() === '') continue;
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === '') continue;
 
-        contentBlocks.push({
-          object: 'block',
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [
-              {
-                type: 'text',
-                text: {
-                  content: paragraph,
-                },
+      contentBlocks.push({
+        object: 'block',
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: paragraph,
               },
-            ],
-          },
-        });
-      }
+            },
+          ],
+        },
+      });
     }
 
     try {
-      // データベースのテンプレート情報を取得
-      console.log('Fetching database template information...');
+      // データベース情報を取得（プロパティ構造の確認用）
+      console.log('Fetching database information...');
       const database = await notion.databases.retrieve({
         database_id: process.env.NOTION_DATABASE_ID
       });
+
+      console.log('Database info:', JSON.stringify({
+        id: database.id,
+        properties: Object.keys(database.properties)
+      }, null, 2));
 
       // データベースの作成リクエスト
       const createPageRequest = {
@@ -179,7 +182,6 @@ async function addReleaseToNotion() {
           database_id: process.env.NOTION_DATABASE_ID,
         },
         properties: {
-          // Notionデータベースのプロパティ名に合わせて設定
           'Version': {
             title: [
               {
@@ -205,74 +207,76 @@ async function addReleaseToNotion() {
         }
       };
 
-      // テンプレートが存在する場合、テンプレートを使用してページを作成
-      if (database.template) {
-        console.log('Using database template for page creation');
-        createPageRequest.template = {
-          template_mention: { template_mention_date: "now" }
-        };
-
-        // テンプレートを使用する場合は、子ブロックを追加せずにまずページを作成
-        console.log('Creating page with template...');
-        const response = await notion.pages.create(createPageRequest);
-
-        // ページ作成後、リリースノートがある場合はそれを追加
-        if (contentBlocks.length > 0) {
-          console.log('Appending release notes to the created page...');
-          await notion.blocks.children.append({
-            block_id: response.id,
-            children: [
+      // ページコンテンツの作成
+      createPageRequest.children = [
+        {
+          object: 'block',
+          type: 'heading_2',
+          heading_2: {
+            rich_text: [
               {
-                object: 'block',
-                type: 'divider',
-                divider: {}
-              },
-              {
-                object: 'block',
-                type: 'heading_2',
-                heading_2: {
-                  rich_text: [
-                    {
-                      type: 'text',
-                      text: {
-                        content: 'リリースノート',
-                      },
-                    },
-                  ],
+                type: 'text',
+                text: {
+                  content: 'GitHub リリース情報',
                 },
               },
-              ...contentBlocks
-            ]
-          });
-        }
-
-        console.log('Successfully added release to Notion with template!');
-      } else {
-        // テンプレートがない場合は、直接コンテンツを含めてページを作成
-        if (contentBlocks.length > 0) {
-          createPageRequest.children = contentBlocks;
-        } else {
-          createPageRequest.children = [
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  {
-                    type: 'text',
-                    text: {
-                      content: '（リリースノートなし）',
-                    },
-                  },
-                ],
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: `リポジトリ: ${repository}`,
+                },
               },
-            },
-          ];
-        }
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: `バージョン: ${releaseTag}`,
+                },
+              },
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'divider',
+          divider: {}
+        },
+        {
+          object: 'block',
+          type: 'heading_2',
+          heading_2: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: 'リリースノート',
+                },
+              },
+            ],
+          },
+        },
+        ...contentBlocks
+      ];
 
-        const response = await notion.pages.create(createPageRequest);
-        console.log('Successfully added release to Notion without template!');
-      }
+      // ページを作成
+      const response = await notion.pages.create(createPageRequest);
+      console.log('Successfully added release to Notion!');
+      console.log(`Page URL: ${response.url}`);
     } catch (apiError) {
       if (apiError.code === 'object_not_found') {
         console.error(`Notion database with ID ${maskedDbId} not found.`);
