@@ -1,0 +1,12 @@
+{
+  "name": "github-notion-integration",
+  "version": "1.0.0",
+  "description": "GitHub to Notion integration scripts",
+  "private": true,
+  "dependencies": {
+    "@notionhq/client": "^2.2.14"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
