@@ -33,3 +33,4 @@ jobs:
           GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TZ: Asia/Tokyo
