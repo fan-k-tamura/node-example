@@ -1,0 +1,32 @@
+name: Sync GitHub Release to Notion
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  add-to-notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install @notionhq/client
+
+      - name: Add Release to Notion Database
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GITHUB_RELEASE_NAME: ${{ github.event.release.name }}
+          GITHUB_RELEASE_URL: ${{ github.event.release.html_url }}
+          GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          node .github/scripts/add-to-notion.js
