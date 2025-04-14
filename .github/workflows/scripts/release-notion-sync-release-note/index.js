@@ -217,6 +217,53 @@ async function addReleaseToNotion() {
               {
                 type: 'text',
                 text: {
+                  content: 'GitHub リリース情報',
+                },
+              },
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: `リポジトリ: ${repository}`,
+                },
+              },
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: `バージョン: ${releaseTag}`,
+                },
+              },
+            ],
+          },
+        },
+        {
+          object: 'block',
+          type: 'divider',
+          divider: {}
+        },
+        {
+          object: 'block',
+          type: 'heading_2',
+          heading_2: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
                   content: 'リリースノート',
                 },
               },

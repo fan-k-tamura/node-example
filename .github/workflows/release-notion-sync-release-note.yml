@@ -17,13 +17,13 @@ jobs:
         with:
           node-version: "18"
           cache: "npm"
-          cache-dependency-path: ".github/workflows/scripts/package-lock.json"
+          cache-dependency-path: ".github/workflows/scripts/release-notion-sync-release-note/package-lock.json"
 
       - name: Install dependencies
-        run: cd .github/workflows/scripts && npm install
+        run: cd .github/workflows/scripts/release-notion-sync-release-note && npm install
 
       - name: Sync release to Notion
-        run: node .github/workflows/scripts/add-to-notion.js
+        run: node .github/workflows/scripts/release-notion-sync-release-note/index.js
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
