@@ -50,6 +50,7 @@ jobs:
           gh release create "${{ steps.extract_tag.outputs.tag }}" \
             --title "${{ steps.extract_tag.outputs.tag }}" \
             --target main \
+            --latest \
             --generate-notes \
             --notes-start-tag "${{ steps.get_prev_tag.outputs.previous }}"
         env:
