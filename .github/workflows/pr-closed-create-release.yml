@@ -54,4 +54,4 @@ jobs:
             --generate-notes \
             --notes-start-tag "${{ steps.get_prev_tag.outputs.previous }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
