@@ -15,10 +15,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Set up GitHub CLI
-        uses: cli/cli-action@v2
+        uses: actions/checkout@v4
 
       - name: Set GH_TOKEN
         run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
@@ -45,6 +42,8 @@ jobs:
           PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           echo "📌 Previous tag: $PREV_TAG"
           echo "previous=$PREV_TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         run: |
@@ -53,3 +52,5 @@ jobs:
             --target main \
             --generate-notes \
             --notes-start-tag "${{ steps.get_prev_tag.outputs.previous }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
