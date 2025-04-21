@@ -1,0 +1,55 @@
+name: Create Release on Merge PR
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  create-release:
+    if: github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Set GH_TOKEN
+        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Extract new tag from PR title
+        id: extract_tag
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "🔍 PR Title: $PR_TITLE"
+
+          # 完全な SemVer にマッチ（+ build metadata）
+          if [[ "$PR_TITLE" =~ \b(v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?)\b ]]; then
+            TAG="${BASH_REMATCH[1]}"
+            echo "✅ Found SemVer tag: $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to extract SemVer tag from PR title"
+            exit 1
+          fi
+
+      - name: Get previous tag (latest GitHub release)
+        id: get_prev_tag
+        run: |
+          PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          echo "📌 Previous tag: $PREV_TAG"
+          echo "previous=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ steps.extract_tag.outputs.tag }}" \
+            --title "${{ steps.extract_tag.outputs.tag }}" \
+            --target main \
+            --generate-notes \
+            --notes-start-tag "${{ steps.get_prev_tag.outputs.previous }}"
